@@ -9,13 +9,14 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
+use objc::{runtime::Bool, RefEncode};
 pub use {
     objc::{
         class,
         declare::ClassDecl,
         msg_send,
         runtime::{Class, Object, Sel, BOOL, NO, YES},
-        sel, sel_impl, Encode, Encoding,
+        sel, Encode, Encoding,
     },
     std::{ffi::c_void, ptr::NonNull},
 };
@@ -253,14 +254,29 @@ pub struct NSPoint {
 }
 
 unsafe impl Encode for NSPoint {
-    fn encode() -> Encoding {
-        let encoding = format!(
-            "{{CGPoint={}{}}}",
-            f64::encode().as_str(),
-            f64::encode().as_str()
-        );
-        unsafe { Encoding::from_str(&encoding) }
-    }
+    const ENCODING: Encoding = Encoding::Struct("NSPoint", &[f64::ENCODING, f64::ENCODING]);
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct CGPoint {
+    pub x: f64,
+    pub y: f64,
+}
+
+unsafe impl Encode for CGPoint {
+    const ENCODING: Encoding = Encoding::Struct("CGPoint", &[f64::ENCODING, f64::ENCODING]);
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct CGImage {}
+// unsafe impl Encode for CGImage {
+//     const ENCODING: Encoding = Encoding::Struct("CGImage", &[]);
+// }
+
+unsafe impl RefEncode for CGImage {
+    const ENCODING_REF: Encoding = Encoding::Pointer(&Encoding::Struct("CGImage", &[]));
 }
 
 #[repr(C)]
@@ -271,14 +287,7 @@ pub struct NSSize {
 }
 
 unsafe impl Encode for NSSize {
-    fn encode() -> Encoding {
-        let encoding = format!(
-            "{{CGSize={}{}}}",
-            f64::encode().as_str(),
-            f64::encode().as_str()
-        );
-        unsafe { Encoding::from_str(&encoding) }
-    }
+    const ENCODING: Encoding = Encoding::Struct("NSSize", &[f64::ENCODING, f64::ENCODING]);
 }
 
 #[repr(C)]
@@ -299,14 +308,28 @@ impl NSRect {
     }
 }
 unsafe impl Encode for NSRect {
-    fn encode() -> Encoding {
-        let encoding = format!(
-            "{{CGRect={}{}}}",
-            NSPoint::encode().as_str(),
-            NSSize::encode().as_str()
-        );
-        unsafe { Encoding::from_str(&encoding) }
+    const ENCODING: Encoding = Encoding::Struct("NSRect", &[NSPoint::ENCODING, NSSize::ENCODING]);
+}
+
+#[repr(C)]
+#[derive(Copy, Debug, Clone)]
+pub struct CGRect {
+    pub origin: CGPoint,
+    pub size: CGSize,
+}
+impl CGRect {
+    pub fn new(x: f64, y: f64, w: f64, h: f64) -> CGRect {
+        CGRect {
+            origin: CGPoint { x, y },
+            size: CGSize {
+                width: w,
+                height: h,
+            },
+        }
     }
+}
+unsafe impl Encode for CGRect {
+    const ENCODING: Encoding = Encoding::Struct("CGRect", &[CGPoint::ENCODING, CGSize::ENCODING]);
 }
 
 #[repr(u64)] // NSUInteger
@@ -372,6 +395,19 @@ pub enum NSEventType {
     NSEventTypePressure = 34,
 }
 
+unsafe impl Encode for NSEventType {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "NSEventType",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
+}
+
 #[repr(u64)] // NSUInteger
 pub enum NSEventMask {
     NSLeftMouseDownMask = 1 << NSEventType::NSLeftMouseDown as u64,
@@ -404,6 +440,19 @@ pub enum NSEventMask {
     NSEventMaskEndGesture = 1 << NSEventType::NSEventTypeEndGesture as u64,
     NSEventMaskPressure = 1 << NSEventType::NSEventTypePressure as u64,
     NSAnyEventMask = 0xffffffffffffffff,
+}
+
+unsafe impl Encode for NSEventMask {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "NSEventMask",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
 }
 
 #[repr(u64)] // NSUInteger
@@ -462,15 +511,26 @@ impl NSRange {
 }
 
 unsafe impl Encode for NSRange {
-    fn encode() -> Encoding {
-        let encoding = format!(
-            // TODO: Verify that this is correct
-            "{{NSRange={}{}}}",
-            u64::encode().as_str(),
-            u64::encode().as_str(),
-        );
-        unsafe { Encoding::from_str(&encoding) }
-    }
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "NSRange",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
+    // fn encode() -> Encoding {
+    //     let encoding = format!(
+    //         // TODO: Verify that this is correct
+    //         "{{NSRange={}{}}}",
+    //         u64::encode().as_str(),
+    //         u64::encode().as_str(),
+    //     );
+    //     unsafe { Encoding::from_str(&encoding) }
+    // }
 }
 
 pub trait NSMutableAttributedString: Sized {
@@ -526,6 +586,19 @@ pub enum MTLLoadAction {
     Clear = 2,
 }
 
+unsafe impl Encode for MTLLoadAction {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLLoadAction",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
+}
+
 #[repr(u64)]
 #[derive(Clone, Debug)]
 pub enum MTLStoreAction {
@@ -537,6 +610,19 @@ pub enum MTLStoreAction {
     CustomSampleDepthStore = 5,
 }
 
+unsafe impl Encode for MTLStoreAction {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLStoreAction",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
+}
+
 #[repr(C)]
 #[derive(Clone, Debug)]
 pub struct MTLClearColor {
@@ -544,6 +630,22 @@ pub struct MTLClearColor {
     pub green: f64,
     pub blue: f64,
     pub alpha: f64,
+}
+
+unsafe impl Encode for MTLClearColor {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLClearColor",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            f64::ENCODING,
+            f64::ENCODING,
+            f64::ENCODING,
+            f64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
 }
 impl MTLClearColor {
     pub fn new(r: f64, g: f64, b: f64, a: f64) -> MTLClearColor {
@@ -569,12 +671,38 @@ pub enum MTLPixelFormat {
     RGBA16Float = 115,
 }
 
+unsafe impl Encode for MTLPixelFormat {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLPixelFormat",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
+}
+
 /// See <https://developer.apple.com/documentation/metal/mtlsamplerminmagfilter>
 #[repr(u64)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum MTLSamplerMinMagFilter {
     Nearest = 0,
     Linear = 1,
+}
+
+unsafe impl Encode for MTLSamplerMinMagFilter {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLSamplerMinMagFilter",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
 }
 
 /// See <https://developer.apple.com/documentation/metal/mtlsamplermipfilter>
@@ -584,6 +712,19 @@ pub enum MTLSamplerMipFilter {
     NotMipmapped = 0,
     Nearest = 1,
     Linear = 2,
+}
+
+unsafe impl Encode for MTLSamplerMipFilter {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLSamplerMipFilter",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
 }
 
 /// See <https://developer.apple.com/documentation/metal/mtlsampleraddressmode>
@@ -596,6 +737,19 @@ pub enum MTLSamplerAddressMode {
     MirrorRepeat = 3,
     ClampToZero = 4,
     ClampToBorderColor = 5,
+}
+
+unsafe impl Encode for MTLSamplerAddressMode {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLSamplerAddressMode",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
 }
 
 #[repr(u64)]
@@ -656,6 +810,19 @@ pub enum MTLVertexFormat {
     Half = 53,
 }
 
+unsafe impl Encode for MTLVertexFormat {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLVertexFormat",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
+}
+
 #[repr(u64)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum MTLVertexStepFunction {
@@ -665,6 +832,20 @@ pub enum MTLVertexStepFunction {
     PerPatch = 3,
     PerPatchControlPoint = 4,
 }
+
+unsafe impl Encode for MTLVertexStepFunction {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLVertexStepFunction",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
+}
+
 #[repr(u64)]
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -690,6 +871,19 @@ pub enum MTLBlendFactor {
     OneMinusSource1Alpha = 18,
 }
 
+unsafe impl Encode for MTLBlendFactor {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLBlendFactor",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
+}
+
 #[repr(u64)]
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -699,6 +893,19 @@ pub enum MTLBlendOperation {
     ReverseSubtract = 2,
     Min = 3,
     Max = 4,
+}
+
+unsafe impl Encode for MTLBlendOperation {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLBlendOperation",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
 }
 
 #[repr(u64)]
@@ -711,11 +918,37 @@ pub enum MTLPrimitiveType {
     TriangleStrip = 4,
 }
 
+unsafe impl Encode for MTLPrimitiveType {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLPrimitiveType",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
+}
+
 #[repr(u64)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum MTLIndexType {
     UInt16 = 0,
     UInt32 = 1,
+}
+
+unsafe impl Encode for MTLIndexType {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLIndexType",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
 }
 
 #[repr(u64)]
@@ -728,6 +961,19 @@ pub enum MTLCompareFunction {
     NotEqual = 5,
     GreaterEqual = 6,
     Always = 7,
+}
+
+unsafe impl Encode for MTLCompareFunction {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLCompareFunction",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
 }
 
 #[repr(u64)]
@@ -744,6 +990,19 @@ pub enum MTLTextureType {
     D3 = 7,
 }
 
+unsafe impl Encode for MTLTextureType {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLTextureType",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
+}
+
 #[repr(u64)]
 #[allow(non_camel_case_types)]
 pub enum MTLTextureUsage {
@@ -752,6 +1011,19 @@ pub enum MTLTextureUsage {
     ShaderWrite = 0x0002,
     RenderTarget = 0x0004,
     PixelFormatView = 0x0010,
+}
+
+unsafe impl Encode for MTLTextureUsage {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLTextureUsage",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
 }
 
 #[repr(u64)]
@@ -764,12 +1036,40 @@ pub enum MTLStorageMode {
     Memoryless = 3,
 }
 
+unsafe impl Encode for MTLStorageMode {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLStorageMode",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
+}
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct MTLOrigin {
     pub x: u64,
     pub y: u64,
     pub z: u64,
+}
+
+unsafe impl Encode for MTLOrigin {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLOrigin",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            u64::ENCODING,
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
 }
 
 #[repr(C)]
@@ -780,11 +1080,40 @@ pub struct MTLSize {
     pub depth: u64,
 }
 
+unsafe impl Encode for MTLSize {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLSize",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            u64::ENCODING,
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
+}
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct MTLRegion {
     pub origin: MTLOrigin,
     pub size: MTLSize,
+}
+
+unsafe impl Encode for MTLRegion {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLRegion",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            MTLOrigin::ENCODING,
+            MTLSize::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
 }
 
 #[repr(C)]
@@ -794,12 +1123,36 @@ pub struct CGSize {
     pub height: f64,
 }
 
+unsafe impl Encode for CGSize {
+    const ENCODING: Encoding = Encoding::Struct("CGSize", &[f64::ENCODING, f64::ENCODING]);
+}
+
+// unsafe impl RefEncode for CGSize {
+//     const ENCODING_REF: Encoding = Encoding::Struct(
+//         "CGSize",
+//         &[f64::ENCODING, f64::ENCODING, <*const c_void>::ENCODING_REF],
+//     );
+// }
+
 #[repr(u64)]
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum MTLCPUCacheMode {
     DefaultCache = 0,
     WriteCombined = 1,
+}
+
+unsafe impl Encode for MTLCPUCacheMode {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLCPUCacheMode",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
 }
 
 #[repr(u64)]
@@ -809,6 +1162,19 @@ pub enum MTLHazardTrackingMode {
     Default = 0,
     Untracked = 1,
     Tracked = 2,
+}
+
+unsafe impl Encode for MTLHazardTrackingMode {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLHazardTrackingMode",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
 }
 
 pub const MTLResourceCPUCacheModeShift: u64 = 0;
@@ -852,10 +1218,20 @@ pub enum NSDragOperation {
 }
 
 unsafe impl Encode for NSDragOperation {
-    fn encode() -> Encoding {
-        let encoding = format!("Q");
-        unsafe { Encoding::from_str(&encoding) }
-    }
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "NSDragOperation",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            u64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
+    // fn encode() -> Encoding {
+    //     let encoding = format!("Q");
+    //     unsafe { Encoding::from_str(&encoding) }
+    // }
 }
 
 #[repr(C)]
@@ -865,6 +1241,31 @@ pub struct MTLScissorRect {
     pub y: u64,
     pub width: u64,
     pub height: u64,
+}
+
+unsafe impl Encode for MTLScissorRect {
+    const ENCODING: Encoding = Encoding::Struct(
+        // The name of the type that Objective-C sees.
+        "MTLScissorRect",
+        &[
+            // Delegate to field's implementations.
+            // The order is the same as in the definition.
+            f64::ENCODING,
+            f64::ENCODING,
+            f64::ENCODING,
+            f64::ENCODING,
+            <*const c_void>::ENCODING,
+        ],
+    );
+
+    // fn encode() -> Encoding {
+    //     let encoding = format!(
+    //         "{{CGPoint={}{}}}",
+    //         f64::encode().as_str(),
+    //         f64::encode().as_str()
+    //     );
+    //     unsafe { Encoding::from_str(&encoding) }
+    // }
 }
 
 // CORE AUDIO

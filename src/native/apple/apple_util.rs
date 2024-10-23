@@ -557,11 +557,12 @@ macro_rules! msg_send_ {
     });
 }
 pub(crate) use msg_send_;
+use objc::runtime::Bool;
 
-pub extern "C" fn yes(_: &Object, _: Sel) -> BOOL {
-    YES
+pub extern "C" fn yes(_: &Object, _: Sel) -> Bool {
+    Bool::YES
 }
 
-pub extern "C" fn yes1(_: &Object, _: Sel, _: ObjcId) -> BOOL {
-    YES
+pub extern "C" fn yes1(_: &Object, _: Sel, _: ObjcId) -> Bool {
+    Bool::YES
 }

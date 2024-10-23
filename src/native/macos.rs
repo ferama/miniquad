@@ -12,6 +12,7 @@ use {
         },
         native_display, CursorIcon,
     },
+    objc::runtime::Bool,
     std::{
         collections::HashMap,
         os::raw::c_void,
@@ -251,9 +252,10 @@ pub fn define_app_delegate() -> *const Class {
     let superclass = class!(NSObject);
     let mut decl = ClassDecl::new("NSAppDelegate", superclass).unwrap();
     unsafe {
+        // decl.add_method(sel!(applicationShouldTerminateAfterLastWindowClosed:), yes);
         decl.add_method(
             sel!(applicationShouldTerminateAfterLastWindowClosed:),
-            yes1 as extern "C" fn(&Object, Sel, ObjcId) -> BOOL,
+            yes1 as extern "C" fn(&'static Object, Sel, ObjcId) -> Bool,
         );
     }
 
@@ -261,7 +263,7 @@ pub fn define_app_delegate() -> *const Class {
 }
 
 pub fn define_cocoa_window_delegate() -> *const Class {
-    extern "C" fn window_should_close(this: &Object, _: Sel, _: ObjcId) -> BOOL {
+    extern "C" fn window_should_close(this: &Object, _: Sel, _: ObjcId) -> Bool {
         let payload = get_window_payload(this);
 
         unsafe {
@@ -284,9 +286,9 @@ pub fn define_cocoa_window_delegate() -> *const Class {
             }
         }
         if native_display().lock().unwrap().quit_ordered {
-            return YES;
+            return Bool::YES;
         } else {
-            return NO;
+            return Bool::NO;
         }
     }
 
@@ -344,32 +346,32 @@ pub fn define_cocoa_window_delegate() -> *const Class {
     unsafe {
         decl.add_method(
             sel!(windowShouldClose:),
-            window_should_close as extern "C" fn(&Object, Sel, ObjcId) -> BOOL,
+            window_should_close as extern "C" fn(&'static Object, Sel, ObjcId) -> Bool,
         );
 
         decl.add_method(
             sel!(windowDidResize:),
-            window_did_resize as extern "C" fn(&Object, Sel, ObjcId),
+            window_did_resize as extern "C" fn(&'static Object, Sel, ObjcId),
         );
         decl.add_method(
             sel!(windowDidMove:),
-            window_did_move as extern "C" fn(&Object, Sel, ObjcId),
+            window_did_move as extern "C" fn(&'static Object, Sel, ObjcId),
         );
         decl.add_method(
             sel!(windowDidChangeScreen:),
-            window_did_change_screen as extern "C" fn(&Object, Sel, ObjcId),
+            window_did_change_screen as extern "C" fn(&'static Object, Sel, ObjcId),
         );
         decl.add_method(
             sel!(windowDidEnterFullScreen:),
-            window_did_enter_fullscreen as extern "C" fn(&Object, Sel, ObjcId),
+            window_did_enter_fullscreen as extern "C" fn(&'static Object, Sel, ObjcId),
         );
         decl.add_method(
             sel!(windowDidExitFullScreen:),
-            window_did_exit_fullscreen as extern "C" fn(&Object, Sel, ObjcId),
+            window_did_exit_fullscreen as extern "C" fn(&'static Object, Sel, ObjcId),
         );
         decl.add_method(
             sel!(windowDidChangeOcclusionState:),
-            window_did_change_occlusion_state as extern "C" fn(&Object, Sel, ObjcId),
+            window_did_change_occlusion_state as extern "C" fn(&'static Object, Sel, ObjcId),
         );
     }
     // Store internal state as user data
@@ -614,70 +616,76 @@ unsafe fn view_base_decl(decl: &mut ClassDecl) {
 
     decl.add_method(
         sel!(canBecomeKey),
-        yes as extern "C" fn(&Object, Sel) -> BOOL,
+        yes as extern "C" fn(&'static Object, Sel) -> Bool,
     );
     decl.add_method(
         sel!(acceptsFirstResponder),
-        yes as extern "C" fn(&Object, Sel) -> BOOL,
+        yes as extern "C" fn(&'static Object, Sel) -> Bool,
     );
-    decl.add_method(sel!(isOpaque), yes as extern "C" fn(&Object, Sel) -> BOOL);
+    decl.add_method(
+        sel!(isOpaque),
+        yes as extern "C" fn(&'static Object, Sel) -> Bool,
+    );
     decl.add_method(
         sel!(resetCursorRects),
-        reset_cursor_rects as extern "C" fn(&Object, Sel),
+        reset_cursor_rects as extern "C" fn(&'static Object, Sel),
     );
     decl.add_method(
         sel!(mouseMoved:),
-        mouse_moved as extern "C" fn(&Object, Sel, ObjcId),
+        mouse_moved as extern "C" fn(&'static Object, Sel, ObjcId),
     );
     decl.add_method(
         sel!(mouseDragged:),
-        mouse_moved as extern "C" fn(&Object, Sel, ObjcId),
+        mouse_moved as extern "C" fn(&'static Object, Sel, ObjcId),
     );
     decl.add_method(
         sel!(rightMouseDragged:),
-        mouse_moved as extern "C" fn(&Object, Sel, ObjcId),
+        mouse_moved as extern "C" fn(&'static Object, Sel, ObjcId),
     );
     decl.add_method(
         sel!(otherMouseDragged:),
-        mouse_moved as extern "C" fn(&Object, Sel, ObjcId),
+        mouse_moved as extern "C" fn(&'static Object, Sel, ObjcId),
     );
     decl.add_method(
         sel!(mouseDown:),
-        mouse_down as extern "C" fn(&Object, Sel, ObjcId),
+        mouse_down as extern "C" fn(&'static Object, Sel, ObjcId),
     );
     decl.add_method(
         sel!(mouseUp:),
-        mouse_up as extern "C" fn(&Object, Sel, ObjcId),
+        mouse_up as extern "C" fn(&'static Object, Sel, ObjcId),
     );
     decl.add_method(
         sel!(rightMouseDown:),
-        right_mouse_down as extern "C" fn(&Object, Sel, ObjcId),
+        right_mouse_down as extern "C" fn(&'static Object, Sel, ObjcId),
     );
     decl.add_method(
         sel!(rightMouseUp:),
-        right_mouse_up as extern "C" fn(&Object, Sel, ObjcId),
+        right_mouse_up as extern "C" fn(&'static Object, Sel, ObjcId),
     );
     decl.add_method(
         sel!(otherMouseDown:),
-        other_mouse_down as extern "C" fn(&Object, Sel, ObjcId),
+        other_mouse_down as extern "C" fn(&'static Object, Sel, ObjcId),
     );
     decl.add_method(
         sel!(otherMouseUp:),
-        other_mouse_up as extern "C" fn(&Object, Sel, ObjcId),
+        other_mouse_up as extern "C" fn(&'static Object, Sel, ObjcId),
     );
     decl.add_method(
         sel!(scrollWheel:),
-        scroll_wheel as extern "C" fn(&Object, Sel, ObjcId),
+        scroll_wheel as extern "C" fn(&'static Object, Sel, ObjcId),
     );
     decl.add_method(
         sel!(keyDown:),
-        key_down as extern "C" fn(&Object, Sel, ObjcId),
+        key_down as extern "C" fn(&'static Object, Sel, ObjcId),
     );
     decl.add_method(
         sel!(flagsChanged:),
-        flags_changed as extern "C" fn(&Object, Sel, ObjcId),
+        flags_changed as extern "C" fn(&'static Object, Sel, ObjcId),
     );
-    decl.add_method(sel!(keyUp:), key_up as extern "C" fn(&Object, Sel, ObjcId));
+    decl.add_method(
+        sel!(keyUp:),
+        key_up as extern "C" fn(&'static Object, Sel, ObjcId),
+    );
 }
 
 pub fn define_opengl_view_class() -> *const Class {
@@ -725,14 +733,17 @@ pub fn define_opengl_view_class() -> *const Class {
     let superclass = class!(NSView);
     let mut decl: ClassDecl = ClassDecl::new("RenderViewClass", superclass).unwrap();
     unsafe {
-        decl.add_method(sel!(reshape), reshape as extern "C" fn(&Object, Sel));
+        decl.add_method(
+            sel!(reshape),
+            reshape as extern "C" fn(&'static Object, Sel),
+        );
         decl.add_method(
             sel!(drawRect:),
-            draw_rect as extern "C" fn(&Object, Sel, ObjcId),
+            draw_rect as extern "C" fn(&'static Object, Sel, ObjcId),
         );
         decl.add_method(
             sel!(setNeedsDisplayHack),
-            set_needs_display_hack as extern "C" fn(&Object, Sel),
+            set_needs_display_hack as extern "C" fn(&'static Object, Sel),
         );
 
         view_base_decl(&mut decl);
@@ -764,7 +775,7 @@ pub fn define_metal_view_class() -> *const Class {
     unsafe {
         decl.add_method(
             sel!(drawRect:),
-            draw_rect as extern "C" fn(&Object, Sel, ObjcId),
+            draw_rect as extern "C" fn(&'static Object, Sel, ObjcId),
         );
         view_base_decl(&mut decl);
     }
@@ -896,12 +907,13 @@ unsafe fn set_icon(ns_app: ObjcId, icon: &Icon) {
         kCGRenderingIntentDefault,
     );
 
-    let size = NSSize {
+    let img = image as *const CGImage;
+    let size = CGSize {
         width: width as f64,
         height: height as f64,
     };
     let ns_image: ObjcId = msg_send![class!(NSImage), alloc];
-    let () = msg_send![ns_image, initWithCGImage: image size: size];
+    let _: ObjcId = msg_send![ns_image, initWithCGImage: img size: size];
 
     let () = msg_send![ns_app, setApplicationIconImage: ns_image];
     CGDataProviderRelease(provider);
@@ -921,9 +933,9 @@ unsafe fn initialize_menu_bar(ns_app: ObjcId) {
     let app_menu = msg_send_![class!(NSMenu), new];
 
     // Hook up the menu components to the application
-    msg_send_![app_menu_item, setSubmenu: app_menu];
-    msg_send_![menu_bar, addItem: app_menu_item];
-    msg_send_![ns_app, setMainMenu: menu_bar];
+    // let _: ObjcId = msg_send_![app_menu_item, setSubmenu: app_menu];
+    // msg_send_![menu_bar, addItem: app_menu_item];
+    // msg_send_![ns_app, setMainMenu: menu_bar];
 
     // Add quit menu entry with shortcut command-q
     // It uses NSRunningApplication.localizedName, which will try to use the localized name,
@@ -931,16 +943,16 @@ unsafe fn initialize_menu_bar(ns_app: ObjcId) {
     //  the Application bundle files, ending with the executable name.
     let running_application = msg_send_![class!(NSRunningApplication), currentApplication];
     let application_name = msg_send_![running_application, localizedName];
-    let quit_item_title =
-        str_to_nsstring(&format!("Quit {}", nsstring_to_string(application_name)));
-    let quit_item = msg_send_![class!(NSMenuItem), alloc];
-    let quit_item = msg_send_![
-        quit_item,
-        initWithTitle: quit_item_title
-        action: sel!(terminate:)
-        keyEquivalent: str_to_nsstring("q")
-    ];
-    msg_send_![app_menu, addItem: quit_item];
+    // let quit_item_title =
+    //     str_to_nsstring(&format!("Quit {}", nsstring_to_string(application_name)));
+    // let quit_item = msg_send_![class!(NSMenuItem), alloc];
+    // let quit_item = msg_send_![
+    //     quit_item,
+    //     initWithTitle: quit_item_title
+    //     action: sel!(terminate:)
+    //     keyEquivalent: str_to_nsstring("q")
+    // ];
+    // msg_send_![app_menu, addItem: quit_item];
 }
 
 unsafe fn perform_redraw(
@@ -1037,7 +1049,7 @@ where
 
     let ns_app: ObjcId = msg_send![class!(NSApplication), sharedApplication];
     let () = msg_send![ns_app, setDelegate: app_delegate_instance];
-    let () = msg_send![
+    let _: Bool = msg_send![
         ns_app,
         setActivationPolicy: NSApplicationActivationPolicy::NSApplicationActivationPolicyRegular
             as i64
@@ -1054,9 +1066,9 @@ where
         | NSWindowStyleMask::NSMiniaturizableWindowMask as u64
         | NSWindowStyleMask::NSResizableWindowMask as u64;
 
-    let window_frame = NSRect {
-        origin: NSPoint { x: 0., y: 0. },
-        size: NSSize {
+    let window_frame = CGRect {
+        origin: CGPoint { x: 0., y: 0. },
+        size: CGSize {
             width: conf.window_width as f64,
             height: conf.window_height as f64,
         },
@@ -1078,11 +1090,11 @@ where
 
     (*window_delegate).set_ivar("display_ptr", &mut display as *mut _ as *mut c_void);
 
-    let title = str_to_nsstring(&conf.window_title);
-    //let () = msg_send![window, setReleasedWhenClosed: NO];
-    let () = msg_send![window, setTitle: title];
+    // let title = str_to_nsstring(&conf.window_title);
+    let () = msg_send![window, setReleasedWhenClosed: NO];
+    // let () = msg_send![window, setTitle: title];
     let () = msg_send![window, center];
-    let () = msg_send![window, setAcceptsMouseMovedEvents: YES];
+    let () = msg_send![window, setAcceptsMouseMovedEvents: Bool::YES];
 
     let view = match conf.platform.apple_gfx_api {
         AppleGfxApi::OpenGl => create_opengl_view(&mut display, conf.sample_count, conf.high_dpi),
